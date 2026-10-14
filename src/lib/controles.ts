@@ -136,6 +136,30 @@ const controleQStash: Controle = {
     return `Service joignable · Destination : ${process.env.APP_URL}`;
   },
 };
+const controleRealtime: Controle = {
+  service: "Supabase Realtime",
+  description: "Notifications en temps réel",
+  verifier: async () => {
+    const supabase = creerClientAdmin();
+    const canal = supabase.channel(`controle-${Date.now()}`);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        canal.subscribe((statut, erreur) => {
+          if (statut === "SUBSCRIBED") resolve();
+          if (statut === "CHANNEL_ERROR" || statut === "TIMED_OUT") {
+            reject(erreur ?? new Error(`Connexion impossible (${statut})`));
+          }
+        });
+      });
+
+      return "Connexion WebSocket établie";
+    } finally {
+      await supabase.removeChannel(canal);
+      supabase.realtime.disconnect();
+    }
+  },
+};
 export const CONTROLES: Controle[] = [
   controleVercel,
   controleIA,
@@ -144,4 +168,5 @@ export const CONTROLES: Controle[] = [
   controleStockage,
   controleRedis,
   controleQStash,
+  controleRealtime,
 ];
