@@ -39,6 +39,11 @@ export async function appelerModele(
       model,
       messages,
       temperature: 0.3,
+      // gpt-oss est un modèle de raisonnement : ses tokens de réflexion sont pris
+      // sur le même budget que la réponse. On limite la réflexion et on laisse
+      // assez de marge pour que le JSON ne soit pas tronqué.
+      max_completion_tokens: 4096,
+      reasoning_effort: "low",
       ...(options.schema && {
         response_format: {
           type: "json_schema",
