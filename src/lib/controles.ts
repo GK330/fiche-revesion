@@ -1,6 +1,6 @@
 import "server-only";
 import type { Controle } from "@/lib/statut";
-import { creerClientSupabase } from "@/lib/supabase";
+import { creerClientAdmin } from "@/lib/supabase/admin";
 
 const controleVercel: Controle = {
   service: "Vercel",
@@ -51,7 +51,7 @@ const controleBase: Controle = {
   service: "Supabase Database",
   description: "Base de données des fiches",
   verifier: async () => {
-    const supabase = creerClientSupabase();
+    const supabase = creerClientAdmin();
     const { count, error } = await supabase
       .from("fiches")
       .select("id", { count: "exact", head: true });
@@ -63,5 +63,18 @@ const controleBase: Controle = {
     return `${count ?? 0} fiche(s) enregistrée(s)`;
   },
 };
+const controleAuth: Controle = {
+  service: "Supabase Auth",
+  description: "Connexion des utilisateurs",
+  verifier: async () => {
+    const supabase = creerClientAdmin();
+    const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
 
-export const CONTROLES: Controle[] = [controleVercel, controleIA, controleBase];
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return "Service d'authentification joignable";
+  },
+};
+export const CONTROLES: Controle[] = [controleVercel, controleIA, controleBase, controleAuth];
