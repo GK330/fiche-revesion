@@ -4,6 +4,7 @@ import { genererFiche } from "@/lib/generer-fiche";
 import { ErreurIA, messageErreurIA } from "@/lib/ia";
 import { NOMBRE_REESSAIS } from "@/lib/qstash";
 import { creerClientAdmin } from "@/lib/supabase/admin";
+import * as Sentry from "@sentry/nextjs";
 
 export const maxDuration = 60;
 
@@ -39,8 +40,13 @@ async function notifier(
       statut,
       messageErreur,
     });
-  } catch (erreur) {
+   } catch (erreur) {
     console.error("Échec de l'envoi de la notification :", erreur);
+    Sentry.captureException(erreur, {
+      level: "warning",
+      tags: { tache: "notification-email" },
+      extra: { ficheId: fiche.id },
+    });
   }
 }
 
@@ -61,7 +67,7 @@ async function traiter(request: Request) {
   if (!fiche || fiche.statut !== "en_attente") {
     return Response.json({ resultat: "ignoré" });
   }
-
+Sentry.setUser({ id: fiche.user_id });
   try {
     const resultat = await genererFiche(fiche.titre, fiche.texte_source);
 
@@ -79,7 +85,11 @@ async function traiter(request: Request) {
 
     return Response.json({ resultat: "prête" });
   } catch (erreur) {
-    console.error(`Échec de la génération (tentative ${tentative + 1}) :`, erreur);
+        console.error(`Échec de la génération (tentative ${tentative + 1}) :`, erreur);
+    Sentry.captureException(erreur, {
+      tags: { tache: "generation-fiche", tentative: String(tentative + 1) },
+      extra: { ficheId: fiche.id },
+    });
 
     // Erreur passagère et tentatives restantes : on demande à QStash de réessayer
     if (estReessayable(erreur) && tentative < NOMBRE_REESSAIS) {

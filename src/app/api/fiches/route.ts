@@ -4,6 +4,7 @@ import { extraireTextePdf } from "@/lib/pdf";
 import { publierGeneration } from "@/lib/qstash";
 import { creerClientAdmin } from "@/lib/supabase/admin";
 import { creerClientServeur } from "@/lib/supabase/server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: Request) {
   // 0. Vérification de la session
@@ -114,6 +115,7 @@ export async function POST(request: Request) {
     await publierGeneration(fiche.id);
   } catch (erreur) {
     console.error("Erreur lors de la publication du message :", erreur);
+        Sentry.captureException(erreur, { tags: { tache: "publication-qstash" } });
 
     // Traitement système, sans utilisateur : usage légitime du client administrateur
     await creerClientAdmin()

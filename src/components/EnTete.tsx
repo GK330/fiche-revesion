@@ -1,6 +1,7 @@
 import Link from "next/link";
 import BoutonDeconnexion from "@/components/BoutonDeconnexion";
 import { creerClientServeur } from "@/lib/supabase/server";
+import SentryUtilisateur from "@/components/SentryUtilisateur";
 
 export default async function EnTete() {
   const supabase = await creerClientServeur();
@@ -14,6 +15,7 @@ export default async function EnTete() {
 
   return (
     <header className="border-b">
+      <SentryUtilisateur id={user.id} />
       <div className="mx-auto flex max-w-4xl items-center justify-between p-4 text-sm">
         <Link href="/" className="font-semibold">
           Fiches de révision
