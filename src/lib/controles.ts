@@ -221,7 +221,7 @@ const controleUptimeRobot: Controle = {
       throw new Error("Variable UPTIMEROBOT_API_KEY manquante");
     }
 
-    const reponse = await fetch("<https://api.uptimerobot.com/v2/getMonitors>", {
+    const reponse = await fetch("https://api.uptimerobot.com/v2/getMonitors", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
