@@ -45,7 +45,6 @@ async function attendreFiche(id: string): Promise<FicheEnregistree> {
   return new Promise((resolve, reject) => {
     const canal = supabase.channel(`fiche-${id}`);
     let termine = false;
-    let minuteur: ReturnType<typeof setTimeout> | undefined;
 
     function terminer(action: () => void) {
       if (termine) return;
@@ -65,7 +64,7 @@ async function attendreFiche(id: string): Promise<FicheEnregistree> {
       }
     }
 
-    minuteur = setTimeout(
+    const minuteur = setTimeout(
       () =>
         terminer(() =>
           reject(
@@ -273,7 +272,7 @@ export default function FormulaireFiche() {
         {chargement && etape === "Génération en arrière-plan…" && (
           <p className="text-sm text-gray-500">
             Vous pouvez quitter cette page : la fiche apparaîtra dans « Mes fiches » dès
-            qu'elle sera prête.
+            qu’elle sera prête.
           </p>
         )}
 

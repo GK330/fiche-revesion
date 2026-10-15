@@ -25,7 +25,7 @@ export default async function ListeFiches() {
       )}
 
       {fiches && fiches.length === 0 && (
-        <p className="mt-6 text-gray-600">Aucune fiche pour l'instant.</p>
+        <p className="mt-6 text-gray-600">Aucune fiche pour l’instant.</p>
       )}
 
       <ul className="mt-6 flex flex-col gap-3">
