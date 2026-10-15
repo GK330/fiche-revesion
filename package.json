@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
+    
   },
   "dependencies": {
     "@sentry/nextjs": "^11.7.0",
