@@ -251,6 +251,39 @@ const controleUptimeRobot: Controle = {
     return `Moniteur ${etat} · Disponibilité sur 30 jours : ${moniteur.custom_uptime_ratio} %`;
   },
 };
+const controleLangfuse: Controle = {
+  service: "Langfuse",
+  description: "Observabilité des appels au modèle d'IA",
+  verifier: async () => {
+    const baseUrl = process.env.LANGFUSE_BASE_URL;
+    const clePublique = process.env.LANGFUSE_PUBLIC_KEY;
+    const cleSecrete = process.env.LANGFUSE_SECRET_KEY;
+
+    if (!baseUrl || !clePublique || !cleSecrete) {
+      throw new Error("Variables Langfuse manquantes : les appels au modèle ne sont pas tracés");
+    }
+
+    const sante = await fetch(`${baseUrl}/api/public/health`, { cache: "no-store" });
+    if (!sante.ok) {
+      throw new Error(`Le service a répondu avec le statut ${sante.status}`);
+    }
+
+    const authentification = Buffer.from(`${clePublique}:${cleSecrete}`).toString("base64");
+    const projets = await fetch(`${baseUrl}/api/public/projects`, {
+      headers: { Authorization: `Basic ${authentification}` },
+      cache: "no-store",
+    });
+
+    if (!projets.ok) {
+      throw new Error(`Clés refusées (statut ${projets.status})`);
+    }
+
+    const donnees = await projets.json();
+    const nomProjet = donnees.data?.[0]?.name ?? "inconnu";
+
+    return `Service joignable · Projet « ${nomProjet} »`;
+  },
+};
 export const CONTROLES: Controle[] = [
   controleVercel,
   controleIA,
@@ -263,4 +296,5 @@ export const CONTROLES: Controle[] = [
   controleEmail,
   controleSentry,
   controleUptimeRobot,
+  controleLangfuse,
 ];

@@ -1,3 +1,5 @@
+import { tracerGeneration, type ContexteTrace } from "@/lib/langfuse";
+
 type Message = {
   role: "system" | "user" | "assistant";
   content: string;
@@ -19,7 +21,7 @@ export class ErreurIA extends Error {
 
 export async function appelerModele(
   messages: Message[],
-  options: { schema?: SchemaJSON } = {}
+  options: { schema?: SchemaJSON; trace?: ContexteTrace } = {}
 ): Promise<string> {
   const baseUrl = process.env.AI_BASE_URL;
   const apiKey = process.env.AI_API_KEY;
@@ -29,44 +31,80 @@ export async function appelerModele(
     throw new ErreurIA("La configuration du modèle d'IA est incomplète.", 500);
   }
 
-  const reponse = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.3,
-      // gpt-oss est un modèle de raisonnement : ses tokens de réflexion sont pris
-      // sur le même budget que la réponse. On limite la réflexion et on laisse
-      // assez de marge pour que le JSON ne soit pas tronqué.
-      max_completion_tokens: 4096,
-      reasoning_effort: "low",
-      ...(options.schema && {
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: options.schema.nom,
-            strict: true,
-            schema: options.schema.schema,
+  const debut = new Date();
+
+  // Transmet l'appel à Langfuse, s'il fait partie d'une trace
+  function tracer(details: {
+    sortie?: unknown;
+    tokensEntree?: number;
+    tokensSortie?: number;
+    erreur?: string;
+  }) {
+    if (!options.trace) return;
+    tracerGeneration({
+      trace: options.trace,
+      modele: model!,
+      entree: messages,
+      debut,
+      fin: new Date(),
+      ...details,
+    });
+  }
+
+  let reponse: Response;
+  try {
+    reponse = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.3,
+        // gpt-oss est un modèle de raisonnement : ses tokens de réflexion sont pris
+        // sur le même budget que la réponse. On limite la réflexion et on laisse
+        // assez de marge pour que le JSON ne soit pas tronqué.
+        max_completion_tokens: 4096,
+        reasoning_effort: "low",
+        ...(options.schema && {
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: options.schema.nom,
+              strict: true,
+              schema: options.schema.schema,
+            },
           },
-        },
+        }),
       }),
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch (erreur) {
+    tracer({ erreur: erreur instanceof Error ? erreur.message : "Erreur réseau" });
+    throw erreur;
+  }
 
   if (!reponse.ok) {
     const detail = await reponse.text();
     console.error(`Erreur du modèle d'IA (${reponse.status}) : ${detail}`);
+    tracer({ erreur: `Statut ${reponse.status} : ${detail}` });
     throw new ErreurIA("Le modèle d'IA a renvoyé une erreur.", reponse.status);
   }
 
   const donnees = await reponse.json();
-  return donnees.choices[0].message.content;
+  const contenu: string = donnees.choices[0].message.content;
+
+  tracer({
+    sortie: contenu,
+    tokensEntree: donnees.usage?.prompt_tokens,
+    tokensSortie: donnees.usage?.completion_tokens,
+  });
+
+  return contenu;
 }
+
 export function messageErreurIA(erreur: unknown): string {
   if (erreur instanceof ErreurIA && erreur.status === 429) {
     return "Le service d'IA est momentanément saturé.";
