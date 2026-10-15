@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-2xl p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Fiches de révision</h1>
+        <h1 className="text-3xl font-bold">Fiches de révision de gauthier</h1>
         <Link href="/fiches" className="text-blue-600 underline">
           Mes fiches
         </Link>
